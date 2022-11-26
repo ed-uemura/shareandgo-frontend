@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import ButtonPrimary from '../components/ButtonPrimary';
 import InputMask from 'react-input-mask';
-import User from '../controllers/User';
-import Payment from '../controllers/Payment';
+import { registerUser, isLoggedIn } from '../controllers/User';
+import { createAddress } from '../controllers/Address';
+import { createPayment } from '../controllers/Payment';
 
 // Canadian postal code mask
 const firstLetter = /(?!.*[DFIOQU])[A-VXY]/i;
 const letter = /(?!.*[DFIOQU])[A-Z]/i;
 const digit = /[0-9]/;
-const mask = [firstLetter, digit, letter, ' ', digit, letter, digit];
+const zipMask = [firstLetter, digit, letter, ' ', digit, letter, digit];
 
 const Registration = () => {
 	const [values, setValues] = useState('');
@@ -18,6 +19,7 @@ const Registration = () => {
 		const auxValues = { ...values };
 		auxValues[event.target.id] = event.target.value;
 		setValues(auxValues);
+		console.log("1");
 	}
 
 	const handleSubmit = async (e) => {
@@ -40,13 +42,20 @@ const Registration = () => {
 				lastname: values.lastName,
 				email: values.email,
 				phone: values.phone,
-				city: values.city,
-				province: values.province,
 				accounttype: values.accountType,
 				password: values.password,
 			};
+
 			// call registration controller with user data
-			User.register(user);
+			await registerUser(user);
+			const address = {
+				street: values.address,
+				city: values.city,
+				province: values.province,
+				zip: values.postalCode,
+			};
+
+			await createAddress(address);
 
 			// Validate existing payment data: if exists, register payment method, if not, move forward
 			let payment = {};
@@ -82,14 +91,18 @@ const Registration = () => {
 						transit: values.transitNumber,
 					};
 				}
-				Payment.createPayment(payment);
+				await createPayment(payment);
 			}
+			console.log(isLoggedIn());
 			// Check Session Storage
-			if (User.isLoggedIn()) {
+			if (isLoggedIn()) {
 				// redirect to main page
 				values.accountType === 'driver'
 					? (window.location.href = '/main-driver')
 					: (window.location.href = '/main-passenger');
+			}
+			else{
+				setError('Something went wrong, please try again');
 			}
 		}
 	};
@@ -146,7 +159,7 @@ const Registration = () => {
 
 				<div className='col-md-6'>
 					<InputMask
-						mask={mask}
+						mask={zipMask}
 						maskPlaceholder='___ ___'
 						type='text'
 						id='zipCode'
@@ -281,6 +294,16 @@ const Registration = () => {
 				<div className='col-md-6'>
 					<input
 						type='text'
+						id='address'
+						placeholder='Address'
+						className='form-control'
+						onChange={(e) => handleChange(e)}
+					/>
+				</div>
+
+				<div className='col-md-6'>
+					<input
+						type='text'
 						id='city'
 						placeholder='City'
 						className='form-control'
@@ -295,6 +318,18 @@ const Registration = () => {
 						type='text'
 						id='province'
 						placeholder='Province'
+						className='form-control'
+						onChange={(e) => handleChange(e)}
+					/>
+				</div>
+
+				<div className='col-md-6'>
+					<InputMask
+						mask={zipMask}
+						maskPlaceholder='___ ___'
+						type='text'
+						id='zip'
+						placeholder='ZIP Code'
 						className='form-control'
 						onChange={(e) => handleChange(e)}
 					/>
